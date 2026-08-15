@@ -1,0 +1,332 @@
+/* Reset basic spacing so the layout stays consistent */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Main page styling */
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f7fb;
+  color: #2f3a45;
+  line-height: 1.5;
+}
+
+/* Top header bar */
+.topbar {
+  background: linear-gradient(135deg, steelblue, #3a6f99);
+  color: white;
+  padding: 22px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 18px rgba(42, 93, 147, 0.18);
+}
+
+.topbar h1 {
+  font-size: 28px;
+  margin-bottom: 2px;
+  letter-spacing: 0.3px;
+}
+
+.topbar p {
+  font-size: 14px;
+  opacity: 0.92;
+}
+
+/* Right side of header after login */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.welcome {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* Shared white boxes for login and app sections */
+.login-box,
+.section {
+  width: 860px;
+  max-width: calc(100% - 40px);
+  margin: 28px auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(15, 35, 55, 0.08);
+  padding: 26px;
+  border: none;
+}
+
+.login-box h2,
+.section h2 {
+  margin-bottom: 18px;
+  font-size: 21px;
+  color: #22313f;
+}
+
+/* Login form labels and fields */
+.login-box label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #334150;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d9e3ec;
+  border-radius: 12px;
+  font-size: 14px;
+  background: #fbfcfe;
+  transition: all 0.2s ease;
+}
+
+.login-box input:focus {
+  outline: none;
+  border-color: steelblue;
+  box-shadow: 0 0 0 4px rgba(70, 130, 180, 0.12);
+  background: white;
+}
+
+/* Row used for buttons */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* Main button style */
+.btn {
+  padding: 11px 18px;
+  background: steelblue;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: #3f79a8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(70, 130, 180, 0.2);
+}
+
+/* Secondary button style */
+.btn.secondary {
+  background: #f7f9fc;
+  color: #44515d;
+  border: 1px solid #d9e3ec;
+}
+
+.btn.secondary:hover {
+  background: #eef3f8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Danger button style */
+.btn.danger {
+  background: #2f3a45;
+}
+
+.btn.danger:hover {
+  background: #1f2830;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Information message used for loading */
+.info-msg {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: #eef4fb;
+  color: #2a5d93;
+  border-left: 4px solid steelblue;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+/* Error message */
+.error-msg {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: #fff1f1;
+  color: crimson;
+  border-left: 4px solid crimson;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+/* Course cards */
+.course-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  margin-top: 14px;
+  box-shadow: 0 6px 20px rgba(15, 35, 55, 0.05);
+  border: 1px solid #edf2f7;
+  transition: all 0.2s ease;
+}
+
+.course-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 35, 55, 0.08);
+}
+
+/* Clickable course title */
+.course-title {
+  font-weight: bold;
+  font-size: 17px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  color: #22313f;
+  transition: color 0.2s ease;
+}
+
+.course-title:hover {
+  color: steelblue;
+}
+
+/* Small course info text */
+.course-meta {
+  font-size: 14px;
+  color: #5a6773;
+  margin-bottom: 5px;
+}
+
+/* Expanded details section */
+.course-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f6;
+}
+
+/* Helper text */
+.login-prompt,
+.empty-msg {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #7d8894;
+  font-style: italic;
+}
+
+/* Status badge */
+.badge {
+  display: inline-block;
+  margin-top: 10px;
+  margin-right: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.2px;
+}
+
+/* Approved status */
+.badge-approved {
+  background: #e8f6ec;
+  color: #1f7a36;
+}
+
+/* Pending approval status */
+.badge-pending {
+  background: #fff4e5;
+  color: #b26a00;
+}
+
+/* Declined status */
+.badge-declined {
+  background: #fff0f0;
+  color: #c62828;
+}
+
+/* Drop confirmation box */
+.confirm-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-left: 4px solid steelblue;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+/* Space between trimester groups */
+.trimester-group {
+  margin-top: 26px;
+}
+
+/* Trimester heading */
+.trimester-heading {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: steelblue;
+  font-weight: bold;
+}
+
+/* Shared message box for enrol/drop results */
+.result-msg {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+/* Success message */
+.result-success {
+  background: #e6f4ea;
+  color: #2e7d32;
+  border-left: 4px solid #2e7d32;
+}
+
+/* Error message */
+.result-error {
+  background: #fff0f0;
+  color: crimson;
+  border-left: 4px solid crimson;
+}
+
+/* Approval-needed message */
+.result-approval {
+  background: #fff4e5;
+  color: #a15c00;
+  border-left: 4px solid orange;
+}
+
+/* Small mobile tidy-up */
+@media (max-width: 600px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 18px 16px;
+  }
+
+  .topbar h1 {
+    font-size: 24px;
+  }
+
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .login-box,
+  .section {
+    max-width: calc(100% - 20px);
+    margin: 16px auto;
+    padding: 18px;
+  }
+
+  .btn,
+  .btn.secondary,
+  .btn.danger {
+    width: 100%;
+  }
+}

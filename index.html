@@ -1,0 +1,782 @@
+<!--
+  DEMO ACCOUNTS
+
+  These are fictional sample accounts supplied with the course dataset.
+  They are included only so the demo application can be tested.
+
+  Username: Anh Nguyen
+  Password: 1254
+
+  Username: Billie Bright
+  Password: 1344
+
+  Username: Charlie Chaplin
+  Password: 1394
+
+  Username: Danya Saveall
+  Password: 1337
+
+  Username: Elsbeth West
+  Password: 8252
+-->
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WAID Course App</title>
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="lib/style.css">
+
+  <!-- Vue 2 and Brython -->
+  <script src="https://unpkg.com/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
+</head>
+<body onload="brython(1)">
+
+<div id="app">
+
+  <!-- Top header shown on every screen -->
+  <div class="topbar">
+    <div>
+      <h1>WAID</h1>
+      <p>Course Assignment App</p>
+    </div>
+
+    <!-- Welcome message and logout button only appear after login -->
+    <div v-if="loggedInStudent" class="topbar-right">
+      <span class="welcome">Welcome, {{ loggedInStudent.name }}</span>
+      <button class="btn secondary" @click="logout">Logout</button>
+    </div>
+  </div>
+
+  <!-- Login form -->
+  <div class="login-box" v-if="!loggedInStudent">
+    <h2>Login</h2>
+
+    <!-- Login errors -->
+    <p class="error-msg" v-if="errorMsg">{{ errorMsg }}</p>
+
+    <label>Username</label>
+    <input type="text" v-model="username" placeholder="Enter your username">
+
+    <label>Password</label>
+    <input type="password" v-model="password" placeholder="Enter your password">
+
+    <div class="btn-row">
+      <button class="btn" @click="login">Login</button>
+      <button class="btn secondary" @click="cancelLogin">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Course directory stays visible before and after login -->
+  <div class="section">
+    <h2>All Courses</h2>
+
+    <!-- Loading and data-loading messages -->
+    <p class="info-msg" v-if="loadingData">Loading data from server...</p>
+    <p class="error-msg" v-if="dataErrorMsg">{{ dataErrorMsg }}</p>
+
+    <!-- Show grouped courses once data is ready -->
+    <div v-for="group in trimesterGroups" :key="group.number">
+  <div class="trimester-group" v-if="group.courses.length > 0">
+      <h3 class="trimester-heading">Trimester {{ group.number }}</h3>
+
+      <div v-for="course in group.courses" :key="course.ID" class="course-card">
+
+        <!-- Click course title to open or close details -->
+        <p class="course-title" @click="toggleCourse(course.ID)">
+          {{ course.code }} - {{ course.name }}
+        </p>
+
+        <p class="course-meta">Year: {{ course.year }}</p>
+        <p class="course-meta">Trimester: {{ course.trimester }}</p>
+        <p class="course-meta">
+          Lecture: {{ course.lectureTimes[0] }} {{ course.lectureTimes[1] }}-{{ course.lectureTimes[2] }}
+        </p>
+
+        <!-- Show status if the logged-in student already has this exact offering -->
+        <span
+          v-if="getEnrollmentStatus(course.ID)"
+          class="badge"
+          :class="statusClass(getEnrollmentStatus(course.ID))">
+          {{ getEnrollmentStatus(course.ID) }}
+        </span>
+
+        <!-- Enrol button only shows after login and only if this offering is not already enrolled -->
+        <button
+          v-if="loggedInStudent && !getEnrollmentStatus(course.ID)"
+          class="btn"
+          @click="enrollCourse(course.ID)">
+          Enroll
+        </button>
+
+        <!-- Guest prompt -->
+        <p v-if="!loggedInStudent" class="login-prompt">
+          Please log in to enroll in this course.
+        </p>
+
+        <!-- Last enrolment result for this course -->
+        <div
+          v-if="enrolMessageCourseID === course.ID && enrolMessageText"
+          class="result-msg"
+          :class="
+            enrolMessageType === 'success'
+              ? 'result-success'
+              : enrolMessageType === 'approval'
+                ? 'result-approval'
+                : 'result-error'
+          ">
+          {{ enrolMessageText }}
+        </div>
+
+        <!-- Expanded course details -->
+        <div class="course-details" v-if="selectedCourseID === course.ID">
+          <p class="course-meta"><b>Overview:</b> {{ course.overview }}</p>
+          <p class="course-meta"><b>Prerequisite:</b> {{ course.prerequisite || 'None' }}</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Course feed only shows after login -->
+  <div class="section" v-if="loggedInStudent">
+    <h2>Course Feed</h2>
+
+    <!-- Drop result message -->
+    <div
+      v-if="dropMessageText"
+      class="result-msg"
+      :class="dropMessageType === 'success' ? 'result-success' : 'result-error'">
+      {{ dropMessageText }}
+    </div>
+
+    <!-- Empty feed message -->
+    <p class="empty-msg" v-if="enrolments.length === 0">
+      You are not enrolled in any courses.
+    </p>
+
+    <!-- Show each enrolment -->
+    <div v-for="enrollment in enrolments" :key="enrollment.code" class="course-card">
+      <p class="course-title">
+        {{ getCourse(enrollment.code).code }} - {{ getCourse(enrollment.code).name }}
+      </p>
+
+      <p class="course-meta">Year: {{ getCourse(enrollment.code).year }}</p>
+      <p class="course-meta">Trimester: {{ getCourse(enrollment.code).trimester }}</p>
+      <p class="course-meta">
+        Lecture: {{ getCourse(enrollment.code).lectureTimes[0] }}
+        {{ getCourse(enrollment.code).lectureTimes[1] }}-{{ getCourse(enrollment.code).lectureTimes[2] }}
+      </p>
+
+      <!-- Enrolment status badge -->
+      <span class="badge" :class="statusClass(enrollment.status)">
+        {{ enrollment.status }}
+      </span>
+
+      <!-- Drop button -->
+      <div>
+        <button
+          class="btn secondary"
+          v-if="courseToDropID !== enrollment.code"
+          @click="startDrop(enrollment.code)">
+          Drop Course
+        </button>
+      </div>
+
+      <!-- Drop confirmation -->
+      <div class="confirm-box" v-if="courseToDropID === enrollment.code">
+        <p>Are you sure you want to drop this course?</p>
+        <div class="btn-row">
+          <button class="btn danger" @click="confirmDrop(enrollment.code)">Confirm</button>
+          <button class="btn secondary" @click="cancelDrop()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="text/python">
+from browser import window, ajax
+import json
+
+# Server URLs from the project page
+COURSE_URL = "https://api.npoint.io/056f57c25b2c3f26bc3f"
+STUDENT_URL = "https://api.npoint.io/8d80b39b6c5897b03cb0"
+
+# Keep track of the current logged-in student
+current_student = None
+
+# Fallback course data used if the server cannot be reached
+FALLBACK_COURSES = [
+    {
+        "ID": "1",
+        "code": "INFO101",
+        "name": "Introduction to Information Systems",
+        "year": "2026",
+        "overview": "An examination of the role of information systems in the business operations, managerial decision-making and strategy of modern organisations. The course introduces the fundamental concepts of computer-based information systems acquisition and use",
+        "trimester": "1",
+        "lectureTimes": ["Wed", "12pm", "1pm"],
+        "prerequisite": "",
+        "workshopTimes": [["Thu", "2pm", "4pm"], ["Thu", "4pm", "6pm"]]
+    },
+    {
+        "ID": "2",
+        "code": "INFO102",
+        "name": "Foundations of Application Development",
+        "year": "2026",
+        "overview": "An introduction to the foundations of application development in a business context. The course takes students through the process of translating business requirements into simple business applications using web technologies.",
+        "trimester": "2",
+        "lectureTimes": ["Mon", "12pm", "1pm"],
+        "prerequisite": "INFO101",
+        "workshopTimes": [["Wed", "2pm", "4pm"], ["Wed", "4pm", "6pm"]]
+    },
+    {
+        "ID": "3",
+        "code": "INFO101",
+        "name": "Introduction to Information Systems",
+        "year": "2026",
+        "Overview": "An examination of the role of information systems in the business operations, managerial decision-making and strategy of modern organisations. The course introduces the fundamental concepts of computer-based information systems acquisition and use",
+        "trimester": "1",
+        "lectureTimes": ["Wed", "2pm", "3pm"],
+        "prerequisite": "",
+        "workshopTimes": [["Wed", "4pm", "6pm"], ["Thu", "10am", "12pm"], ["Thu", "12pm", "2pm"]]
+    },
+    {
+        "ID": "4",
+        "code": "INFO103",
+        "name": "Databases",
+        "year": "2026",
+        "overview": "This course introduces the principles of database definition, design, access and implementation. It shows how databases support modern data processing systems. Students will be able to create a data model from a business situation, implement a database from that data model and use a query language such as SQL to access data.",
+        "trimester": "2",
+        "lectureTimes": ["Wed", "2pm", "3pm"],
+        "prerequisite": "INFO101",
+        "workshopTimes": [["Mon", "10am", "12pm"], ["Tue", "10am", "12pm"]]
+    }
+]
+
+# Fallback student data used if the server cannot be reached
+FALLBACK_STUDENTS = [
+    {
+        "gpa": 8.3,
+        "name": "Anh Nguyen",
+        "type": "domestic",
+        "password": "1254",
+        "completed": ["INFO103"],
+        "enrollment": [{"code": "3", "status": "not requiring approval", "workshop": 1}]
+    },
+    {
+        "gpa": 5.5,
+        "name": "Billie Bright",
+        "type": "interplanetary",
+        "password": "1344",
+        "completed": ["INFO101"],
+        "enrollment": [{"code": "2", "status": "requiring approval with approval having been given"}]
+    },
+    {
+        "gpa": 8.3,
+        "name": "Charlie Chaplin",
+        "type": "interplanetary",
+        "password": "1394",
+        "completed": ["INFO103"],
+        "enrollment": [{"code": "1", "status": "not requiring approval", "workshop": 1}]
+    },
+    {
+        "gpa": 8.3,
+        "name": "Danya Saveall",
+        "type": "domestic",
+        "password": "1337",
+        "completed": ["INFO103"],
+        "enrollment": [{"code": "1", "status": "not requiring approval", "workshop": 0}]
+    },
+    {
+        "gpa": 8.3,
+        "name": "Elsbeth West",
+        "type": "domestic",
+        "password": "8252",
+        "completed": ["INFO103"],
+        "enrollment": [{"code": "2", "status": "not requiring approval", "workshop": 1}]
+    }
+]
+
+# Make course records consistent before the app uses them
+def normalise_courses(courses):
+    cleaned = []
+
+    for course in courses:
+        new_course = dict(course)
+
+        # One sample record uses "Overview" instead of "overview"
+        if "overview" not in new_course and "Overview" in new_course:
+            new_course["overview"] = new_course["Overview"]
+
+        if "overview" not in new_course:
+            new_course["overview"] = ""
+
+        if "workshopTimes" not in new_course:
+            new_course["workshopTimes"] = []
+
+        new_course["ID"] = str(new_course["ID"])
+        new_course["year"] = str(new_course["year"])
+        new_course["trimester"] = str(new_course["trimester"])
+
+        cleaned.append(new_course)
+
+    return cleaned
+
+# Make student records consistent before the app uses them
+def normalise_students(students):
+    cleaned = []
+
+    for student in students:
+        new_student = dict(student)
+
+        if "completed" not in new_student:
+            new_student["completed"] = []
+
+        if "enrollment" not in new_student:
+            new_student["enrollment"] = []
+
+        fixed_enrolments = []
+        for enrollment in new_student["enrollment"]:
+            new_enrollment = dict(enrollment)
+            new_enrollment["code"] = str(new_enrollment["code"])
+
+            if "status" not in new_enrollment:
+                new_enrollment["status"] = "not requiring approval"
+
+            if "workshop" not in new_enrollment:
+                new_enrollment["workshop"] = ""
+
+            fixed_enrolments.append(new_enrollment)
+
+        new_student["enrollment"] = fixed_enrolments
+        cleaned.append(new_student)
+
+    return cleaned
+
+# Add readable data-loading message
+def add_data_error(message):
+    if app.dataErrorMsg == "":
+        app.dataErrorMsg = message
+    else:
+        app.dataErrorMsg = app.dataErrorMsg + " " + message
+
+# Group courses into trimester sections for the directory
+def build_trimester_groups():
+    groups = [
+        {"number": 1, "courses": []},
+        {"number": 2, "courses": []},
+        {"number": 3, "courses": []}
+    ]
+
+    for course in app.courses:
+        trimester = int(course["trimester"])
+
+        if trimester == 1:
+            groups[0]["courses"].append(course)
+        elif trimester == 2:
+            groups[1]["courses"].append(course)
+        elif trimester == 3:
+            groups[2]["courses"].append(course)
+
+    app.trimesterGroups = groups
+
+# Convert time text like 10am and 1pm into numbers for clash checking
+def time_to_number(time_text):
+    text = str(time_text).strip().lower()
+
+    if text.endswith("am"):
+        hour = int(text[:-2])
+        if hour == 12:
+            hour = 0
+        return hour
+
+    if text.endswith("pm"):
+        hour = int(text[:-2])
+        if hour != 12:
+            hour += 12
+        return hour
+
+    return 0
+
+# Find one course offering by ID
+def get_course(course_id):
+    return next((c for c in app.courses if c["ID"] == str(course_id)), {
+        "ID": "",
+        "code": "???",
+        "name": "Unknown Course",
+        "overview": "",
+        "prerequisite": "",
+        "year": "0",
+        "trimester": "0",
+        "lectureTimes": ["?", "?", "?"]
+    })
+
+# Count current enrolments in the same year and trimester
+def count_trimester_courses(target_year, target_trimester):
+    count = 0
+
+    for enrollment in app.enrolments:
+        enrolled_course = get_course(enrollment["code"])
+
+        same_year = int(enrolled_course["year"]) == int(target_year)
+        same_trimester = int(enrolled_course["trimester"]) == int(target_trimester)
+
+        if same_year and same_trimester:
+            count += 1
+
+    return count
+
+# Check if prerequisite is enrolled in an earlier trimester of the same year
+def enrolled_in_prerequisite_earlier(prerequisite_code, target_year, target_trimester):
+    for enrollment in app.enrolments:
+        enrolled_course = get_course(enrollment["code"])
+
+        same_code = enrolled_course["code"] == prerequisite_code
+        same_year = int(enrolled_course["year"]) == int(target_year)
+        earlier_trimester = int(enrolled_course["trimester"]) < int(target_trimester)
+
+        if same_code and same_year and earlier_trimester:
+            return True
+
+    return False
+
+# Check lecture clash against already enrolled courses in same year and trimester
+def has_lecture_clash(new_course):
+    new_year = int(new_course["year"])
+    new_trimester = int(new_course["trimester"])
+    new_day = new_course["lectureTimes"][0]
+    new_start = time_to_number(new_course["lectureTimes"][1])
+    new_end = time_to_number(new_course["lectureTimes"][2])
+
+    for enrollment in app.enrolments:
+        enrolled_course = get_course(enrollment["code"])
+
+        same_year = int(enrolled_course["year"]) == new_year
+        same_trimester = int(enrolled_course["trimester"]) == new_trimester
+
+        if not same_year or not same_trimester:
+            continue
+
+        enrolled_day = enrolled_course["lectureTimes"][0]
+        enrolled_start = time_to_number(enrolled_course["lectureTimes"][1])
+        enrolled_end = time_to_number(enrolled_course["lectureTimes"][2])
+
+        # A clash exists when the day is the same and the time ranges overlap
+        if new_day == enrolled_day and new_start < enrolled_end and new_end > enrolled_start:
+            return True
+
+    return False
+
+# Get student's current status for a course offering
+def get_enrollment_status(course_id):
+    match = next((e for e in app.enrolments if e["code"] == str(course_id)), None)
+
+    if match:
+        return match["status"]
+
+    return ""
+
+# Pick badge colour from status text
+def status_class(status):
+    text = str(status)
+
+    if "not requiring approval" in text or "approval having been given" in text:
+        return "badge-approved"
+
+    if "declined" in text:
+        return "badge-declined"
+
+    return "badge-pending"
+
+# Handle login
+def login(ev):
+    global current_student
+
+    if app.loadingData:
+        app.errorMsg = "Please wait. Data is still loading."
+        return
+
+    username = str(app.username).strip()
+    password = str(app.password).strip()
+
+    if username == "" or password == "":
+        app.errorMsg = "Please enter your username and password."
+        return
+
+    matched = next(
+        (s for s in app.students if s["name"] == username and s["password"] == password),
+        None
+    )
+
+    if matched:
+        current_student = matched
+        app.loggedInStudent = matched
+        app.enrolments = list(matched["enrollment"])
+        app.errorMsg = ""
+        app.username = ""
+        app.password = ""
+        app.selectedCourseID = ""
+        app.courseToDropID = ""
+        app.enrolMessageCourseID = ""
+        app.enrolMessageText = ""
+        app.enrolMessageType = ""
+        app.dropMessageText = ""
+        app.dropMessageType = ""
+    else:
+        app.errorMsg = "Incorrect username or password."
+
+# Clear login form
+def cancel_login(ev):
+    app.username = ""
+    app.password = ""
+    app.errorMsg = ""
+
+# Log out and clear state
+def logout(ev):
+    global current_student
+
+    current_student = None
+    app.loggedInStudent = ""
+    app.enrolments = []
+    app.username = ""
+    app.password = ""
+    app.errorMsg = ""
+    app.selectedCourseID = ""
+    app.courseToDropID = ""
+    app.enrolMessageCourseID = ""
+    app.enrolMessageText = ""
+    app.enrolMessageType = ""
+    app.dropMessageText = ""
+    app.dropMessageType = ""
+
+# Open or close course details
+def toggle_course(course_id):
+    course_id = str(course_id)
+    app.selectedCourseID = "" if app.selectedCourseID == course_id else course_id
+
+# Main enrolment business logic
+def enroll_course(course_id):
+    global current_student
+
+    course_id = str(course_id)
+
+    app.enrolMessageCourseID = course_id
+    app.enrolMessageText = ""
+    app.enrolMessageType = ""
+
+    if app.loggedInStudent == "":
+        return
+
+    # Stop duplicate enrolment
+    already_enrolled = any(e["code"] == course_id for e in app.enrolments)
+    if already_enrolled:
+        app.enrolMessageType = "error"
+        app.enrolMessageText = "Enrollment declined. You are already enrolled in this course."
+        return
+
+    course = get_course(course_id)
+    target_year = int(course["year"])
+    target_trimester = int(course["trimester"])
+    prerequisite = course["prerequisite"]
+    student_gpa = float(current_student["gpa"])
+    completed_courses = current_student["completed"]
+
+    same_trimester_count = count_trimester_courses(target_year, target_trimester)
+    approval_reasons = []
+
+    # GPA 4 or lower can only take 2 courses in one trimester
+    if student_gpa <= 4 and same_trimester_count >= 2:
+        app.enrolMessageType = "error"
+        app.enrolMessageText = "Enrollment declined. Students with GPA 4 or lower cannot enrol in more than 2 courses in the same trimester."
+        return
+
+    # A 5th course is blocked
+    if same_trimester_count >= 4:
+        app.enrolMessageType = "error"
+        app.enrolMessageText = "Enrollment declined. You cannot take more than 4 courses in one trimester."
+        return
+
+    # A 4th course needs approval if GPA is below 7
+    if same_trimester_count == 3 and student_gpa < 7:
+        approval_reasons.append("This is a 4th course in the trimester and needs Associate Dean approval because GPA is below 7.")
+
+    # Missing prerequisite uses the approval-pending waiver path
+    if prerequisite != "":
+        prerequisite_completed = prerequisite in completed_courses
+        prerequisite_enrolled_earlier = enrolled_in_prerequisite_earlier(prerequisite, target_year, target_trimester)
+
+        if not prerequisite_completed and not prerequisite_enrolled_earlier:
+            approval_reasons.append("The prerequisite has not been completed, so a prerequisite waiver may be needed.")
+
+    # Lecture clash becomes approval pending
+    if has_lecture_clash(course):
+        approval_reasons.append("This course has a lecture clash with another enrolled course and needs Associate Dean approval.")
+
+    # Decide final status and message
+    if len(approval_reasons) == 0:
+        new_status = "not requiring approval"
+        app.enrolMessageType = "success"
+        app.enrolMessageText = "Enrollment confirmed. The course has been added to your course feed."
+    else:
+        new_status = "requiring approval with approval pending"
+        app.enrolMessageType = "approval"
+        app.enrolMessageText = "Enrollment recorded, but approval is needed. " + " ".join(approval_reasons)
+
+    # Save enrolment into screen state and student data
+    new_enrolments = list(app.enrolments)
+    new_enrolments.append({
+        "code": course_id,
+        "status": new_status,
+        "workshop": ""
+    })
+
+    app.enrolments = new_enrolments
+    current_student["enrollment"] = new_enrolments
+
+# Start drop flow
+def start_drop(course_id):
+    app.courseToDropID = str(course_id)
+    app.dropMessageText = ""
+    app.dropMessageType = ""
+
+# Cancel drop flow
+def cancel_drop():
+    app.courseToDropID = ""
+
+# Check whether dropping is allowed
+def can_drop_course(course_id):
+    global current_student
+
+    course_id = str(course_id)
+
+    if current_student is None:
+        return False, "Drop declined. No student is logged in."
+
+    # Interplanetary students must stay in at least 2 courses in same trimester
+    if current_student["type"] == "interplanetary":
+        course_to_drop = get_course(course_id)
+        target_year = int(course_to_drop["year"])
+        target_trimester = int(course_to_drop["trimester"])
+
+        same_trimester_count = count_trimester_courses(target_year, target_trimester)
+
+        if same_trimester_count <= 2:
+            return False, "Drop declined. Interplanetary students must stay enrolled in at least 2 courses in the same trimester."
+
+    return True, ""
+
+# Confirm drop after rules pass
+def confirm_drop(course_id):
+    global current_student
+
+    course_id = str(course_id)
+
+    allowed, message = can_drop_course(course_id)
+
+    if not allowed:
+        app.dropMessageType = "error"
+        app.dropMessageText = message
+        app.courseToDropID = ""
+        return
+
+    new_enrolments = [e for e in app.enrolments if e["code"] != course_id]
+    app.enrolments = new_enrolments
+    app.courseToDropID = ""
+
+    if current_student is not None:
+        current_student["enrollment"] = new_enrolments
+
+    app.dropMessageType = "success"
+    app.dropMessageText = "Course dropped successfully."
+
+# Start loading course data from server
+def load_courses():
+    req = ajax.ajax()
+    req.bind("complete", on_courses_loaded)
+    req.open("GET", COURSE_URL, True)
+    req.send()
+
+# Handle course response
+def on_courses_loaded(req):
+    if req.status == 200 or req.status == 0:
+        try:
+            app.courses = normalise_courses(json.loads(req.text))
+        except Exception:
+            app.courses = normalise_courses(FALLBACK_COURSES)
+            add_data_error("Course data could not be read from the server. Fallback sample data is being used.")
+    else:
+        app.courses = normalise_courses(FALLBACK_COURSES)
+        add_data_error("Course data could not be retrieved from the server. Fallback sample data is being used.")
+
+    build_trimester_groups()
+    load_students()
+
+# Start loading student data from server
+def load_students():
+    req = ajax.ajax()
+    req.bind("complete", on_students_loaded)
+    req.open("GET", STUDENT_URL, True)
+    req.send()
+
+# Handle student response
+def on_students_loaded(req):
+    if req.status == 200 or req.status == 0:
+        try:
+            app.students = normalise_students(json.loads(req.text))
+        except Exception:
+            app.students = normalise_students(FALLBACK_STUDENTS)
+            add_data_error("Student data could not be read from the server. Fallback sample data is being used.")
+    else:
+        app.students = normalise_students(FALLBACK_STUDENTS)
+        add_data_error("Student data could not be retrieved from the server. Fallback sample data is being used.")
+
+    app.loadingData = False
+
+# Create Vue app
+app = window.Vue.new({
+    "el": "#app",
+    "data": {
+        "username": "",
+        "password": "",
+        "errorMsg": "",
+        "dataErrorMsg": "",
+        "loadingData": True,
+        "selectedCourseID": "",
+        "loggedInStudent": "",
+        "courseToDropID": "",
+        "enrolMessageCourseID": "",
+        "enrolMessageText": "",
+        "enrolMessageType": "",
+        "dropMessageText": "",
+        "dropMessageType": "",
+        "trimesterGroups": [],
+        "courses": [],
+        "students": [],
+        "enrolments": []
+    },
+    "methods": {
+        "login": login,
+        "cancelLogin": cancel_login,
+        "logout": logout,
+        "toggleCourse": toggle_course,
+        "getCourse": get_course,
+        "getEnrollmentStatus": get_enrollment_status,
+        "enrollCourse": enroll_course,
+        "startDrop": start_drop,
+        "cancelDrop": cancel_drop,
+        "confirmDrop": confirm_drop,
+        "statusClass": status_class
+    }
+})
+
+# Start server-side data loading
+load_courses()
+</script>
+
+</body>
+</html>
